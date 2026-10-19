@@ -3128,14 +3128,12 @@
             border: 0;
             padding: 5px;
         }
-        #login-screen .forgot-password-row { display: flex; justify-content: center; align-items: center; gap: 8px; margin: 4px 0 0; }
-        #login-screen .login-field:has(#login-password) { margin-bottom: 6px; }
-        #login-screen .forgot-password-status:empty { display: none; }
+        #login-screen .forgot-password-row { text-align: center; margin: 12px 0 0; }
         #login-screen .forgot-password-btn {
             border: 2px solid #19afd5; border-radius: 15px;
             background: #e5faff; color: #096d91;
-            font: 700 .82rem 'Quicksand', sans-serif; cursor: pointer;
-            padding: 7px 11px; min-height: 34px;
+            font: 700 1rem 'Quicksand', sans-serif; cursor: pointer;
+            padding: 11px 18px; min-height: 44px;
         }
         #login-screen .forgot-password-btn:disabled { opacity: .6; cursor: wait; }
         #login-screen .forgot-password-status {
@@ -3143,12 +3141,10 @@
             font-size: .88rem; font-weight: 700; line-height: 1.35;
         }
         #login-screen .forgot-password-status.error { color: #b42318; }
-        #login-screen [hidden] { display: none !important; }
-        #login-screen .login-submit:disabled { opacity: .65; cursor: wait; }
         #login-screen .login-submit {
             min-width: 210px;
             height: 60px;
-            margin: 12px auto 20px;
+            margin: 24px auto 0;
             padding: 0 34px;
             border: 0;
             border-radius: 22px;
@@ -5295,7 +5291,7 @@
                 </div>
 
                 <div class="login-form-area">
-                    <h1 id="login-title" class="login-title">Log in</h1>
+                    <h1 class="login-title">Log in</h1>
 
                     <div class="login-field">
                         <input type="email" id="login-email" class="form-input" placeholder="Email" autocomplete="email" aria-label="Email">
@@ -5307,18 +5303,11 @@
                         <button type="button" class="login-field-icon password-toggle" aria-label="Show or hide password" onclick="toggleLoginPassword()">◉</button>
                     </div>
 
-                    <div id="signup-confirm-field" class="login-field" hidden>
-                        <input type="password" id="signup-confirm-password" class="form-input" placeholder="Confirm password" autocomplete="new-password" aria-label="Confirm password">
-                        <span class="login-field-icon">🔒</span>
-                    </div>
-                    <p id="signup-status" class="forgot-password-status" role="status" aria-live="polite"></p>
                     <div class="forgot-password-row">
                         <button type="button" id="forgot-password-btn" class="forgot-password-btn" onclick="playClickSound(); handleForgotPassword()">Forgot password?</button>
-                        <button type="button" id="signup-toggle-btn" class="forgot-password-btn" onclick="playClickSound(); toggleSignupMode()">Sign Up</button>
                     </div>
                     <p id="forgot-password-status" class="forgot-password-status" role="status" aria-live="polite"></p>
-                    <button type="button" id="login-submit-btn" class="login-submit" onclick="playClickSound(); submitLoginForm()">Log in</button>
-
+                    <button class="login-submit" onclick="playClickSound(); handleLogin()">Log in</button>
                 </div>
             </div>
 
@@ -6625,7 +6614,6 @@
         import { 
             getAuth, 
             signInWithEmailAndPassword, 
-            createUserWithEmailAndPassword,
             sendPasswordResetEmail,
             signOut, 
             onAuthStateChanged,
@@ -6663,37 +6651,18 @@
         window.activeProfile = "";
         window.userProfiles = [];
 
-        let profileRequestVersion = 0;
-        let profileOwnerUid = null;
-        let authSessionVersion = 0;
-        function resetProfileSession() {
-            profileRequestVersion++;
-            profileOwnerUid = null;
-            window.activeProfile = '';
-            window.userProfiles = [];
-            document.getElementById('home-greeting').innerText = currentGlobalLang === 'ms' ? 'Hai! 👋' : 'Hi! 👋';
-            document.getElementById('active-profile-val').innerText = '-';
-            document.getElementById('profile-selection-list').innerHTML = '';
-            document.getElementById('manage-profiles-list').innerHTML = '';
-            document.getElementById('new-profile-name').value = '';
-            document.getElementById('score-records-body').innerHTML = '';
-        }
         onAuthStateChanged(auth, async (user) => {
-            const session = ++authSessionVersion;
-            resetProfileSession();
-            window.currentUserAuth = user || null;
             if (user) {
-                document.getElementById('nav-menu').style.display = 'none';
-                document.getElementById('acc-email-val').innerText = user.email;
-                showScreen('profile-selection-screen');
+                window.currentUserAuth = user;
+                document.getElementById("nav-menu").style.display = "flex";
+                document.getElementById("acc-email-val").innerText = user.email;
                 await fetchProfiles();
-                if (session !== authSessionVersion || auth.currentUser?.uid !== user.uid) return;
-                document.getElementById('nav-menu').style.display = 'flex';
                 window.playLoginWelcomeAudio();
             } else {
-                document.getElementById('nav-menu').style.display = 'none';
-                document.getElementById('acc-email-val').innerText = '';
-                showScreen('login-screen');
+                window.currentUserAuth = null;
+                window.activeProfile = "";
+                document.getElementById("nav-menu").style.display = "none";
+                showScreen("login-screen");
             }
         });
 
@@ -6716,92 +6685,9 @@
             }
         };
 
-        let signupMode = false;
-        let signupBusy = false;
-        window.updateSignupLanguage = function() {
-            const ms = document.documentElement.lang === 'ms';
-            document.getElementById('login-title').textContent = signupMode ? (ms ? 'Daftar akaun' : 'Sign Up') : (ms ? 'Log masuk' : 'Log in');
-            document.getElementById('login-submit-btn').textContent = signupBusy ? (ms ? 'Sedang mendaftar...' : 'Creating account...') : signupMode ? (ms ? 'Daftar akaun' : 'Sign Up') : (ms ? 'Log masuk' : 'Log in');
-            document.getElementById('signup-toggle-btn').textContent = signupMode ? (ms ? 'Log masuk' : 'Log in') : (ms ? 'Daftar akaun' : 'Sign Up');
-            const confirm = document.getElementById('signup-confirm-password');
-            confirm.placeholder = ms ? 'Sahkan kata laluan' : 'Confirm password';
-            confirm.setAttribute('aria-label', confirm.placeholder);
-        };
-        window.toggleSignupMode = function() {
-            if (signupBusy) return;
-            signupMode = !signupMode;
-            document.getElementById('signup-confirm-field').hidden = !signupMode;
-            document.getElementById('forgot-password-btn').hidden = signupMode;
-            document.getElementById('login-password').autocomplete = signupMode ? 'new-password' : 'current-password';
-            document.getElementById('signup-confirm-password').value = '';
-            document.getElementById('signup-status').textContent = '';
-            document.getElementById('forgot-password-status').textContent = '';
-            window.updateSignupLanguage();
-        };
-        window.submitLoginForm = function() {
-            if (signupBusy) return;
-            return signupMode ? window.handleSignup() : window.handleLogin();
-        };
-        window.handleSignup = async function() {
-            if (signupBusy) return;
-            const emailInput = document.getElementById('login-email');
-            const email = emailInput.value.trim();
-            const password = document.getElementById('login-password').value;
-            const confirm = document.getElementById('signup-confirm-password').value;
-            const status = document.getElementById('signup-status');
-            const ms = document.documentElement.lang === 'ms';
-            status.classList.remove('error');
-            const fail = message => { status.textContent = message; status.classList.add('error'); };
-            if (!email || !emailInput.checkValidity()) {
-                fail(ms ? 'Masukkan alamat e-mel yang sah.' : 'Enter a valid email address.');
-                emailInput.focus(); return;
-            }
-            if (password.length < 6) {
-                fail(ms ? 'Kata laluan mesti sekurang-kurangnya 6 aksara.' : 'Password must contain at least 6 characters.'); return;
-            }
-            if (password !== confirm) {
-                fail(ms ? 'Kata laluan tidak sepadan.' : 'Passwords do not match.'); return;
-            }
-            signupBusy = true;
-            document.getElementById('login-submit-btn').disabled = true;
-            document.getElementById('signup-toggle-btn').disabled = true;
-            window.updateSignupLanguage();
-            status.textContent = ms ? 'Sedang mencipta akaun...' : 'Creating your account...';
-            resetProfileSession();
-            window.prepareLoginWelcomeAudio();
-            try {
-                // Firebase creates the account and signs in; the existing auth listener opens the app.
-                await createUserWithEmailAndPassword(auth, email, password);
-                status.textContent = ms ? 'Akaun berjaya dicipta! Anda telah log masuk.' : 'Account created! You are now logged in.';
-                document.getElementById('login-password').value = '';
-                document.getElementById('signup-confirm-password').value = '';
-                signupMode = false;
-                document.getElementById('signup-confirm-field').hidden = true;
-                document.getElementById('forgot-password-btn').hidden = false;
-                document.getElementById('login-password').autocomplete = 'current-password';
-            } catch (error) {
-                window.stopLoginWelcomeAudio();
-                const messages = {
-                    'auth/email-already-in-use': ms ? 'E-mel ini sudah berdaftar. Sila log masuk atau gunakan Lupa kata laluan.' : 'This email is already registered. Log in or use Forgot password.',
-                    'auth/invalid-email': ms ? 'Alamat e-mel tidak sah.' : 'Invalid email address.',
-                    'auth/weak-password': ms ? 'Kata laluan terlalu lemah. Gunakan kata laluan yang lebih kuat.' : 'Password is too weak. Choose a stronger password.',
-                    'auth/password-does-not-meet-requirements': ms ? 'Kata laluan tidak memenuhi syarat. Gunakan kata laluan yang lebih kuat.' : 'Password does not meet the requirements. Choose a stronger password.',
-                    'auth/network-request-failed': ms ? 'Semak sambungan internet dan cuba lagi.' : 'Check your internet connection and try again.',
-                    'auth/too-many-requests': ms ? 'Terlalu banyak percubaan. Cuba lagi sebentar nanti.' : 'Too many attempts. Please try again later.',
-                    'auth/operation-not-allowed': ms ? 'Pendaftaran belum diaktifkan. Sila hubungi pentadbir.' : 'Registration is not enabled. Please contact the administrator.'
-                };
-                fail(messages[error.code] || (ms ? 'Pendaftaran gagal. Sila cuba lagi.' : 'Sign up failed. Please try again.'));
-            } finally {
-                signupBusy = false;
-                document.getElementById('login-submit-btn').disabled = false;
-                document.getElementById('signup-toggle-btn').disabled = false;
-                window.updateSignupLanguage();
-            }
-        };
-
         window.handleLogin = async function() {
             const email = document.getElementById("login-email").value.trim();
-            const password = document.getElementById("login-password").value;
+            const password = document.getElementById("login-password").value.trim();
 
             if (!email || !password) {
                 alert("Please fill in both email and password.");
@@ -6895,26 +6781,19 @@
         async function fetchProfiles() {
             if (!window.currentUserAuth) return;
             const uid = window.currentUserAuth.uid;
-            const requestVersion = ++profileRequestVersion;
-            const isCurrent = () => requestVersion === profileRequestVersion && window.currentUserAuth?.uid === uid && auth.currentUser?.uid === uid;
             const dbRef = ref(db);
             
             try {
                 const snapshot = await get(child(dbRef, `users/${uid}/profiles`));
-                // A response from a previous account must never restore its profile.
-                if (!isCurrent()) return;
-                profileOwnerUid = uid;
                 const listContainer = document.getElementById("profile-selection-list");
                 const manageContainer = document.getElementById("manage-profiles-list");
                 
                 listContainer.innerHTML = "";
                 if (manageContainer) manageContainer.innerHTML = "";
 
-                const profilesObj = snapshot.exists() ? snapshot.val() : null;
-                const validProfiles = profilesObj && typeof profilesObj === 'object'
-                    ? Object.entries(profilesObj).filter(([, name]) => typeof name === 'string' && name.trim()) : [];
-                if (validProfiles.length > 0) {
-                    window.userProfiles = validProfiles;
+                if (snapshot.exists()) {
+                    const profilesObj = snapshot.val();
+                    window.userProfiles = Object.entries(profilesObj);
 
                     // KIDDORA kini hanya menggunakan SATU profile.
                     // Jika data lama mempunyai lebih daripada satu profile, profile pertama
@@ -6927,7 +6806,7 @@
                     btn.style.width = "100%";
                     btn.style.margin = "8px 0";
                     btn.innerText = `👤 ${activeProfileName}`;
-                    btn.onclick = () => { if (isCurrent()) selectProfile(activeProfileName, uid); };
+                    btn.onclick = () => selectProfile(activeProfileName);
                     listContainer.appendChild(btn);
 
                     if (manageContainer) {
@@ -6969,7 +6848,7 @@
                     }
 
                     // Sudah pernah create profile: terus masuk Home setiap kali login.
-                    selectProfile(activeProfileName, uid);
+                    selectProfile(activeProfileName);
                 } else {
                     // Belum pernah create profile: barulah tunjuk "Who is Learning Today?".
                     window.userProfiles = [];
@@ -6979,8 +6858,6 @@
                     showScreen("profile-selection-screen");
                 }
             } catch (err) {
-                if (!isCurrent()) return;
-                resetProfileSession();
                 console.error("Error fetching profiles:", err);
                 window.kiddoraStartupError('Profil tidak dapat dimuatkan. Semak internet dan cuba semula. / Could not load profile. Check your connection and retry.');
             }
@@ -6996,6 +6873,9 @@
 
             try {
                 await set(ref(db, `users/${uid}/profiles/${profileId}`), trimmedName);
+                if (window.activeProfile === oldName) {
+                    selectProfile(trimmedName);
+                }
                 alert("Profile name updated successfully! 🎉");
                 await fetchProfiles();
             } catch (err) {
@@ -7054,9 +6934,7 @@
             }
         };
 
-        function selectProfile(profileName, ownerUid = profileOwnerUid) {
-            if (!ownerUid || ownerUid !== profileOwnerUid || window.currentUserAuth?.uid !== ownerUid || auth.currentUser?.uid !== ownerUid) return;
-            if (!window.userProfiles.some(([, name]) => name === profileName)) return;
+        function selectProfile(profileName) {
             window.activeProfile = profileName;
             const greetingPrefix = currentGlobalLang === 'en' ? "Hi" : "Hai";
             document.getElementById("home-greeting").innerText = `${greetingPrefix} ${profileName}! 👋`;
@@ -7373,7 +7251,6 @@
             currentGlobalLang = (lang === 'ms' ? 'ms' : 'en');
             if(typeof updateCompleteAnimalLanguage === 'function') updateCompleteAnimalLanguage();
             document.documentElement.lang = currentGlobalLang === 'ms' ? 'ms' : 'en';
-            if (window.updateSignupLanguage) window.updateSignupLanguage();
             document.getElementById('forgot-password-btn').textContent = currentGlobalLang === 'ms' ? 'Lupa kata laluan?' : 'Forgot password?';
             setTimeout(()=>{ if(typeof updateColourLanguage === 'function') updateColourLanguage(); if(typeof updateBodyLanguage === 'function') updateBodyLanguage(); if(typeof updateShapeLanguage === 'function') updateShapeLanguage(); if(typeof updateTransportLanguage === 'function') updateTransportLanguage(); if(typeof updateFoodLanguage === 'function') updateFoodLanguage(); if(typeof updateJobsLanguage === 'function') updateJobsLanguage(); if(typeof updateInstallTutorialLanguage === 'function') updateInstallTutorialLanguage(); if(typeof updateBijakSukuKataLanguage === 'function') updateBijakSukuKataLanguage(); },0);
             
